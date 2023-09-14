@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todo/models/todo.dart';
 
@@ -103,8 +105,11 @@ class _ToDoListPageState extends State<ToDoListPage> {
   // 할일 수정 메소드
   Future<void> _modifyTodo(ToDo todo) async {
     final prefs = await SharedPreferences.getInstance();
+    final oldText = todo.title;
 
     if (!mounted) return;
+
+    _todoController.text = oldText;
 
     final updatedText = await showDialog(
       context: context,
@@ -123,7 +128,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
               child: const Text('수정'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, oldText),
               child: const Text('취소'),
             ),
           ],
@@ -131,10 +136,20 @@ class _ToDoListPageState extends State<ToDoListPage> {
       },
     );
 
-    if (updatedText != null) {
+    // 수정한 text 받아온 후에는 contoller 비워줌.
+    _todoController.text = '';
+
+    // 수정한 할일이 기존 할일과 다르면 할일을 수정.
+    if (updatedText != null && updatedText != oldText) {
       setState(() {
         todo.title = updatedText;
       });
+    } else {
+      // 수정한 할일이 기존 할일과 같으면 아무것도 하지 않음(취소 버튼을 누른 경우 포함)
+      // 이 경우 ui가 사라진 상태라서 다른 tab에 갔다가 다시 와야 보임.
+      // dismissed를 쓰면 안됬나
+
+      return;
     }
 
     // 수정 한 할일 목록을 저장
@@ -143,46 +158,40 @@ class _ToDoListPageState extends State<ToDoListPage> {
     prefs.setStringList('todoList', todoListJson);
   }
 
-  void _handleDismiss(DismissDirection direction, ToDo todo) async {
-    if (direction == DismissDirection.endToStart) {
-      _deleteTodo(todo); // 오른쪽에서 왼쪽으로 스와이프 했을 때, 할일 삭제 메소드 호출
-    } else if (direction == DismissDirection.startToEnd) {
-      await _modifyTodo(todo); // 왼쪽에서 오른쪽으로 스와이프 했을 때, 할일 수정 메소드 호출
-    }
-  }
-
-  // Todo 객체를 Dismissible(... child: ListTile) 위젯으로 변경하는 메소드
+  // Todo 객체를 Slidable(... child: ListTile) 위젯으로 변경하는 메소드
   Widget _buildItemWidget(ToDo todo) {
-    return Dismissible(
+    return Slidable(
       key: Key(todo.title), // 각 아이템의 고유한 키
-      onDismissed: (direction) => _handleDismiss(direction, todo), // 삭제 또는 수정
-      background: Container(
-        // 왼쪽에서 오른쪽으로 스와이프 했을 때 나오는 container
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: const Color.fromARGB(255, 65, 138, 233),
-        ),
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 20.0),
-        child: const Icon(
-          Icons.edit_document,
-          color: Colors.white,
-        ),
+      // 왼쪽에서 오른쪽으로 스와이프
+      startActionPane: ActionPane(
+        motion: const BehindMotion(),
+        extentRatio: 0.25,
+        children: [
+          SlidableAction(
+            onPressed: (context) => _modifyTodo(todo),
+            backgroundColor: const Color.fromARGB(255, 65, 138, 233),
+            foregroundColor: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            icon: Icons.edit_document,
+            label: 'MODIFY',
+          ),
+        ],
       ),
-      secondaryBackground: Container(
-        // 오른쪽에서 왼쪽으로 스와이프 했을 때 나오는 container
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: const Color(0xFFE94141),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20.0),
-        child: const Icon(
-          Icons.delete,
-          color: Colors.white,
-        ),
+      // 오른쪽에서 왼쪽으로 스와이프
+      endActionPane: ActionPane(
+        motion: const BehindMotion(),
+        extentRatio: 0.25,
+        children: [
+          SlidableAction(
+            onPressed: (context) => _deleteTodo(todo),
+            backgroundColor: const Color(0xFFE94141),
+            foregroundColor: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            icon: Icons.delete,
+            label: 'DELETE',
+          ),
+        ],
       ),
-
       child: Container(
         // 할 일 container
         decoration: const BoxDecoration(

@@ -50,3 +50,15 @@
    - dismissible 위젯 문제인지, 스와이프를 하고 나면 해당 할일이 잠깐 사라짐.
    - 수정하지 않고 취소를 누르면, 할일이 사라진 채로 있음. 다른 tab으로 넘어갔다가 다시 오면 다시 생긴다.
    - 취소를 눌렀을 때 창을 새로고침 하면 해결이 될듯 함.
+
+---
+## 3일차 진행상황
+ - 수정 기능 전면 교체
+   - 기존 Dismissible 위젯 -> Slidable 위젯 사용.
+      - pubspec.yaml 파일에 dependency:   flutter_slidable: ^3.0.0 추가 필요.
+      - 원래 삭제기능을 오른쪽에서 왼쪽으로 스와이프 하면 되는 것 처럼 수정기능 또한 왼쪽으로 오른쪽으로 스와이프 하는 것으로 생각함.
+      - 그러나 dismissible 위젯은 스와이프를 하면 무조건 UI상에서 dismiss 되게 되어 있음(UI상에서 해당 '할일' 이 없어짐.)
+      - UI상에서는 없어지지만, 수정기능은 해당 할일이 사라지면 안되기 때문에 뭔가 충돌나서 에러가 계속 생김
+      - dismissed dismissible widget is still part of the tree 에러 발생.
+      - chat gpt에게 dismissible 위젯 말고 다른 스와이프 기능 있는 위젯을 알려달라함 -> Slidable 위젯 알려줌
+      - Slidable 위젯을 사용하니, 스와이프하면 수정/삭제 버튼이 나오게 하고, 버튼을 누르면 기능을 수행하도록 함.
