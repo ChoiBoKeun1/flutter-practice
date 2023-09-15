@@ -6,13 +6,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'ToDo App',
-      theme: ThemeData(
-        primaryColor: const Color(0xFF1C1C27),
-        scaffoldBackgroundColor: const Color(0xFF1C1C27).withOpacity(0.7),
-      ),
-      home: const DefaultTabController(
+      home: DefaultTabController(
         length: 4,
         child: ToDoListPage(),
       ),

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todo/models/todo.dart';
@@ -16,7 +16,16 @@ class ToDoListPage extends StatefulWidget {
 class _ToDoListPageState extends State<ToDoListPage> {
   final _items = <ToDo>[]; // ToDo 객체들 저장할 리스트
   final _todoController = TextEditingController(); // text컨트롤러
-  final double _containerWidth = 200.0; // AnimatedContainer의 초기 너비
+  final double _inputContainerWidth = 200.0; // 입력창 Container 너비
+
+  Map<String, Color> colorMap = {
+    'Appbar Color': const Color(0xFF1C1C27),
+    'Scaffold Background Color': const Color(0xFF1C1C27).withOpacity(0.7),
+    'Todo Container Color': const Color(0xFF272833),
+    'Highlight Color': const Color(0xFFFFB43A),
+    'Text Color': const Color(0xFFFCFCFC),
+    'My Check Color': const Color(0xFFFCFCFC),
+  };
 
   @override
   void initState() {
@@ -145,10 +154,6 @@ class _ToDoListPageState extends State<ToDoListPage> {
         todo.title = updatedText;
       });
     } else {
-      // 수정한 할일이 기존 할일과 같으면 아무것도 하지 않음(취소 버튼을 누른 경우 포함)
-      // 이 경우 ui가 사라진 상태라서 다른 tab에 갔다가 다시 와야 보임.
-      // dismissed를 쓰면 안됬나
-
       return;
     }
 
@@ -161,7 +166,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
   // Todo 객체를 Slidable(... child: ListTile) 위젯으로 변경하는 메소드
   Widget _buildItemWidget(ToDo todo) {
     return Slidable(
-      key: Key(todo.title), // 각 아이템의 고유한 키
+      //key: Key(todo.title), // 각 아이템의 고유한 키
       // 왼쪽에서 오른쪽으로 스와이프
       startActionPane: ActionPane(
         motion: const BehindMotion(),
@@ -194,9 +199,9 @@ class _ToDoListPageState extends State<ToDoListPage> {
       ),
       child: Container(
         // 할 일 container
-        decoration: const BoxDecoration(
-          color: Color(0xFF272833),
-          borderRadius: BorderRadius.all(Radius.circular(15)),
+        decoration: BoxDecoration(
+          color: colorMap['Todo Container Color'],
+          borderRadius: const BorderRadius.all(Radius.circular(15)),
         ),
         child: ListTile(
           onTap: () => _toggleTodo(todo), // 완료/미완료 상태 변경
@@ -206,31 +211,31 @@ class _ToDoListPageState extends State<ToDoListPage> {
                 ? const Icon(Icons.star)
                 : const Icon(Icons.star_border_outlined),
             onPressed: () => _toggleImportant(todo), // 중요 할일 표시
-            color: const Color(0xFFFFB43A),
+            color: colorMap['Highlight Color'],
           ),
           title: Row(
             children: [
               Checkbox(
                 value: todo.isDone,
                 onChanged: (bool? value) => _toggleTodo(todo),
-                checkColor: const Color(0xFFFCFCFC), // 체크 했을 때 체크 표시의 색깔
-                activeColor: const Color(0xFFFFB43A), // 체크 했을 때 배경색깔
-                side:
-                    const BorderSide(color: Color(0xFFFFB43A)), // 체크박스 border.
+                checkColor: colorMap['My Check Color'], // 체크 했을 때 체크 표시의 색깔
+                activeColor: colorMap['Highlight Color'], // 체크 했을 때 배경색깔
+                side: BorderSide(
+                    color: colorMap['Highlight Color']!), // 체크박스 border.
               ),
               Text(
                 todo.title,
                 style: todo.isDone
-                    ? const TextStyle(
+                    ? TextStyle(
                         // 할 일 완료시
                         decoration: TextDecoration.lineThrough, // 취소선 긋기
                         fontStyle: FontStyle.italic, // 이탤릭체
-                        color: Colors.white,
+                        color: colorMap['Text Color'],
                         fontWeight: FontWeight.bold,
                       )
-                    : const TextStyle(
+                    : TextStyle(
                         // 할일 미완료시
-                        color: Colors.white,
+                        color: colorMap['Text Color'],
                         fontWeight: FontWeight.bold,
                       ),
               ),
@@ -248,20 +253,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
       showAll = false}) {
     // 필터링된 할일 목록
     late final List<ToDo> filteredItems;
-    if (showAll) {
-      filteredItems = _items;
-    } else {
-      filteredItems = _items.where((item) {
-        if (showImportant) {
-          return item.isImportant;
-        } else if (showCompleted) {
-          return item.isDone;
-        } else if (!showCompleted) {
-          return !item.isDone;
-        }
-        return true;
-      }).toList();
-    }
+    filteredItems = filteringItems(showAll, showImportant, showCompleted);
 
     return Padding(
       padding: const EdgeInsets.only(
@@ -286,7 +278,11 @@ class _ToDoListPageState extends State<ToDoListPage> {
                     ],
                   );
                 } else {
-                  return _buildItemWidget(filteredItems[index]);
+                  return Column(
+                    children: [
+                      _buildItemWidget(filteredItems[index]),
+                    ],
+                  );
                 }
               },
             ),
@@ -296,6 +292,26 @@ class _ToDoListPageState extends State<ToDoListPage> {
         ],
       ),
     );
+  }
+
+  List<ToDo> filteringItems(showAll, bool showImportant, bool showCompleted) {
+    List<ToDo> filteredItems;
+
+    if (showAll) {
+      filteredItems = _items;
+    } else {
+      filteredItems = _items.where((item) {
+        if (showImportant) {
+          return item.isImportant;
+        } else if (showCompleted) {
+          return item.isDone;
+        } else if (!showCompleted) {
+          return !item.isDone;
+        }
+        return true;
+      }).toList();
+    }
+    return filteredItems;
   }
 
   // input 위젯을 만드는 메소드.
@@ -308,27 +324,29 @@ class _ToDoListPageState extends State<ToDoListPage> {
         children: [
           Container(
             alignment: Alignment.center,
-            width: _containerWidth,
+            width: _inputContainerWidth,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFB43A).withOpacity(0.2), // input 배경색 설정
+              color:
+                  colorMap['Highlight Color']!.withOpacity(0.2), // input 배경색 설정
               borderRadius: BorderRadius.circular(50), // 모서리 둥근 사각형
               border: Border.all(
                 // 테두리 추가
-                color: const Color(0xFFFFB43A),
+                color: colorMap['Highlight Color']!,
                 width: 3,
               ),
             ),
             child: TextField(
               controller: _todoController,
-              style: const TextStyle(
-                  color: Color(0xFFFFB43A)), // 사용자가 입력하는 text 색깔 설정
-              decoration: const InputDecoration(
+              style: TextStyle(
+                  color: colorMap['Highlight Color']), // 사용자가 입력하는 text 색깔 설정
+              decoration: InputDecoration(
                 border: InputBorder.none, // 입력란의 테두리 제거
                 hintText: 'Add tasks...',
                 hintStyle: TextStyle(
-                    color: Color(0xFFFFB43A)), // hint text 색 설정. (Add tasks...)
+                    color: colorMap[
+                        'Highlight Color']), // hint text 색 설정. (Add tasks...)
                 contentPadding:
-                    EdgeInsets.only(left: 20), // Add tasks... 왼쪽에 여백 추가
+                    const EdgeInsets.only(left: 20), // Add tasks... 왼쪽에 여백 추가
               ),
             ),
           ),
@@ -340,9 +358,9 @@ class _ToDoListPageState extends State<ToDoListPage> {
                 _addTodo(ToDo(_todoController.text));
               }
             },
-            icon: const Icon(
+            icon: Icon(
               Icons.add_circle_outlined,
-              color: Color(0xFFFFB43A),
+              color: colorMap['Highlight Color'],
               size: 35,
             ),
           ),
@@ -360,17 +378,24 @@ class _ToDoListPageState extends State<ToDoListPage> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
+        backgroundColor: colorMap['Scaffold Background Color'],
         appBar: AppBar(
           centerTitle: true,
           title: const Text('남은 할 일'),
-          backgroundColor: Theme.of(context).primaryColor,
-          bottom: const TabBar(
-            indicatorColor: Color(0xFFFFB43A), // tabbar 아래 밑줄 색깔
-            unselectedLabelColor: Colors.white, // 선택되지 않은 tab 글자 색깔
-            labelColor: Color(0xFFFFB43A), // 선택된 tab 글자 색깔
-            labelPadding: EdgeInsets.all(2), // tab text에 padding을 넣음.
+          backgroundColor: colorMap['Appbar Color'],
+          actions: [
+            IconButton(
+              onPressed: _showSettings,
+              icon: const Icon(Icons.settings),
+            ),
+          ],
+          bottom: TabBar(
+            indicatorColor: colorMap['Highlight Color'], // tabbar 아래 밑줄 색깔
+            unselectedLabelColor: colorMap['Text Color'], // 선택되지 않은 tab 글자 색깔
+            labelColor: colorMap['Highlight Color'], // 선택된 tab 글자 색깔
+            labelPadding: const EdgeInsets.all(2), // tab text에 padding을 넣음.
             // 이거 안넣으면 글자가 너무 길어서 일부분이 가려짐.
-            tabs: [
+            tabs: const [
               Tab(text: 'All'),
               Tab(text: 'Completed'),
               Tab(text: 'Incompleted'),
@@ -387,6 +412,84 @@ class _ToDoListPageState extends State<ToDoListPage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showSettings() async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('색상 설정'),
+          content: Column(
+            children: [
+              _buildColorOption('Appbar Color'),
+              _buildColorOption('Scaffold Background Color'),
+              _buildColorOption('Todo Container Color'),
+              _buildColorOption('Highlight Color'),
+              _buildColorOption('Text Color'),
+              _buildColorOption('My Check Color'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildColorOption(String label) {
+    return ListTile(
+      title: Text(label),
+      onTap: () {
+        _showColorPickerDialog(label, colorMap[label]!);
+      },
+      trailing: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: colorMap[label],
+          border: Border.all(color: Colors.black),
+        ),
+      ),
+    );
+  }
+
+  void _showColorPickerDialog(String label, Color currentColor) {
+    Color pickerColor = currentColor;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('색상 선택'),
+          content: SingleChildScrollView(
+            child: ColorPicker(
+              pickerColor: pickerColor,
+              onColorChanged: (newColor) {
+                setState(() => pickerColor = newColor);
+              },
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              child: const Text('확인'),
+              onPressed: () {
+                setState(() {
+                  currentColor = pickerColor;
+                  colorMap[label] = currentColor;
+                });
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
