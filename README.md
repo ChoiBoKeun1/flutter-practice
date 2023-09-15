@@ -65,8 +65,8 @@
 ---
 ## 4일차 진행상황
  - 색상 설정창.
-   -- colorPicker 사용.
-   -- flutter_colorpicker: ^1.0.3
-   -- Appbar, Scaffold, todoContainer, highlight, text, checkbox 체크 색깔을 변경할 수 있음.
-   -- 아직 색깔 변경한 것을 local에 저장하는 기능은 넣지 않음. 즉 껐다 키면 초기색상으로 돌아감
-   -- SharedPreferences.getInstance() 사용하면 가능할것으로 보임.
+   - colorPicker 사용.
+   - flutter_colorpicker: ^1.0.3
+   - Appbar, Scaffold, todoContainer, highlight, text, checkbox 체크 색깔을 변경할 수 있음.
+   - 아직 색깔 변경한 것을 local에 저장하는 기능은 넣지 않음. 즉 껐다 키면 초기색상으로 돌아감
+   - SharedPreferences.getInstance() 사용하면 가능할것으로 보임.
