@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:todo/models/my_color.dart';
 import 'package:todo/models/todo.dart';
 
 class ToDoListPage extends StatefulWidget {
@@ -18,25 +19,162 @@ class _ToDoListPageState extends State<ToDoListPage> {
   final _todoController = TextEditingController(); // text컨트롤러
   final double _inputContainerWidth = 200.0; // 입력창 Container 너비
 
-  Map<String, Color> colorMap = {
-    'Appbar Color': const Color(0xFF1C1C27),
-    'Scaffold Background Color': const Color(0xFF1C1C27).withOpacity(0.7),
-    'Todo Container Color': const Color(0xFF272833),
-    'Highlight Color': const Color(0xFFFFB43A),
-    'Text Color': const Color(0xFFFCFCFC),
-    'My Check Color': const Color(0xFFFCFCFC),
-  };
+  var colorList =
+      <MyColor>[]; // color 리스트. 이 리스트는 sharedPreferences 사용하여 저장하는데에만 씀.
+
+  // 실제 widget들에 사용하는 색깔 객체들
+  late MyColor appbarColor;
+  late MyColor scaffoldBackgroundColor;
+  late MyColor todoContainerColor;
+  late MyColor highlightColor;
+  late MyColor textColor;
+  late MyColor myCheckColor;
 
   @override
   void initState() {
     super.initState();
     _loadTodoList(); // 할일 목록 로드
+    _initColor(); // 색상 초기화
+    _loadColor(); // 색상 로드
   }
 
   @override
   void dispose() {
     _todoController.dispose(); // 컨트롤러는 종료시 반드시 해제
     super.dispose();
+  }
+
+  // main app build 메소드
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        // 다른곳 눌러서 키보드 감추기 가능하게 함.
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: scaffoldBackgroundColor.color,
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text(
+            '남은 할 일',
+            style: TextStyle(
+              color: textColor.color,
+            ),
+          ),
+          backgroundColor: appbarColor.color,
+          actions: [
+            IconButton(
+              onPressed: _showSettings,
+              icon: Icon(
+                Icons.settings,
+                color: textColor.color,
+              ),
+            ),
+          ],
+          bottom: TabBar(
+            indicatorColor: highlightColor.color, // tabbar 아래 밑줄 색깔
+            unselectedLabelColor: textColor.color, // 선택되지 않은 tab 글자 색깔
+            labelColor: highlightColor.color, // 선택된 tab 글자 색깔
+            labelPadding: const EdgeInsets.all(2), // tab text에 padding을 넣음.
+            // 이거 안넣으면 글자가 너무 길어서 일부분이 가려짐.
+            tabs: const [
+              Tab(text: 'All'),
+              Tab(text: 'Completed'),
+              Tab(text: 'Incompleted'),
+              Tab(text: 'Important'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            buildTodoList(showAll: true), // 모든 할일 보여줌
+            buildTodoList(showCompleted: true), // 완료된 할일만 보여줌
+            buildTodoList(showCompleted: false), // 미완료된 할일만 보여줌
+            buildTodoList(showImportant: true), // 중요한 할일만 보여줌
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 초기 색상 지정 메소드
+  void _initColor() {
+    setState(() {});
+    appbarColor = MyColor(
+      title: 'Appbar Color',
+      color: const Color(0xFF1C1C27),
+    );
+    scaffoldBackgroundColor = MyColor(
+      title: 'Scaffold Background Color',
+      color: const Color(0xFF1C1C27).withOpacity(0.7),
+    );
+    todoContainerColor = MyColor(
+      title: 'Todo Container Color',
+      color: const Color(0xFF272833),
+    );
+    highlightColor = MyColor(
+      title: 'Highlight Color',
+      color: const Color(0xFFFFB43A),
+    );
+    textColor = MyColor(
+      title: 'Text Color',
+      color: const Color(0xFFFCFCFC),
+    );
+    myCheckColor = MyColor(
+      title: 'My Check Color',
+      color: const Color(0xFFFCFCFC),
+    );
+
+    // colorList에 색상들 추가.
+    colorList.add(appbarColor);
+    colorList.add(scaffoldBackgroundColor);
+    colorList.add(todoContainerColor);
+    colorList.add(highlightColor);
+    colorList.add(textColor);
+    colorList.add(myCheckColor);
+  }
+
+  // 색상 로드 메소드
+  void _loadColor() async {
+    final prefs = await SharedPreferences.getInstance();
+    final colorJson = prefs.getStringList('colorList') ?? [];
+
+    // 만약 키 : colorList 로 저장한 data가 있으면 로드한다.
+    if (colorJson.isNotEmpty) {
+      setState(() {
+        colorList.clear();
+        for (final jsonStr in colorJson) {
+          final colorJson = Map<String, dynamic>.from(jsonDecode(jsonStr));
+          print('제이슨 : $colorJson');
+          final color = MyColor.fromJson(colorJson);
+          colorList.add(color);
+        }
+
+        appbarColor = colorList[0];
+        scaffoldBackgroundColor = colorList[1];
+        todoContainerColor = colorList[2];
+        highlightColor = colorList[3];
+        textColor = colorList[4];
+        myCheckColor = colorList[5];
+      });
+    }
+  }
+
+  // 설정창에서 색상을 지정한 뒤 저장하는 메소드.
+  void _saveColor() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    colorList[0] = appbarColor;
+    colorList[1] = scaffoldBackgroundColor;
+    colorList[2] = todoContainerColor;
+    colorList[3] = highlightColor;
+    colorList[4] = textColor;
+    colorList[5] = myCheckColor;
+
+    final colorListJson =
+        colorList.map((myColor) => jsonEncode(myColor.toJson())).toList();
+    prefs.setStringList('colorList', colorListJson);
   }
 
   // todo 리스트 로드 메소드
@@ -55,7 +193,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   // 할일 추가 메소드
-  void _addTodo(ToDo todo) async {
+  void addTodo(ToDo todo) async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
@@ -70,7 +208,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   // 할일 삭제 메소드
-  void _deleteTodo(ToDo todo) async {
+  void deleteTodo(ToDo todo) async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
@@ -84,7 +222,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   // 할일 완료/미완료 토글 메소드
-  void _toggleTodo(ToDo todo) async {
+  void toggleTodo(ToDo todo) async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
@@ -98,7 +236,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   // 중요한 할일 토글 메소드
-  void _toggleImportant(ToDo todo) async {
+  void toggleImportant(ToDo todo) async {
     final prefs = await SharedPreferences.getInstance();
 
     setState(() {
@@ -112,7 +250,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   // 할일 수정 메소드
-  Future<void> _modifyTodo(ToDo todo) async {
+  Future<void> modifyTodo(ToDo todo) async {
     final prefs = await SharedPreferences.getInstance();
     final oldText = todo.title;
 
@@ -163,91 +301,9 @@ class _ToDoListPageState extends State<ToDoListPage> {
     prefs.setStringList('todoList', todoListJson);
   }
 
-  // Todo 객체를 Slidable(... child: ListTile) 위젯으로 변경하는 메소드
-  Widget _buildItemWidget(ToDo todo) {
-    return Slidable(
-      //key: Key(todo.title), // 각 아이템의 고유한 키
-      // 왼쪽에서 오른쪽으로 스와이프
-      startActionPane: ActionPane(
-        motion: const BehindMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (context) => _modifyTodo(todo),
-            backgroundColor: const Color.fromARGB(255, 65, 138, 233),
-            foregroundColor: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            icon: Icons.edit_document,
-            label: 'MODIFY',
-          ),
-        ],
-      ),
-      // 오른쪽에서 왼쪽으로 스와이프
-      endActionPane: ActionPane(
-        motion: const BehindMotion(),
-        extentRatio: 0.25,
-        children: [
-          SlidableAction(
-            onPressed: (context) => _deleteTodo(todo),
-            backgroundColor: const Color(0xFFE94141),
-            foregroundColor: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            icon: Icons.delete,
-            label: 'DELETE',
-          ),
-        ],
-      ),
-      child: Container(
-        // 할 일 container
-        decoration: BoxDecoration(
-          color: colorMap['Todo Container Color'],
-          borderRadius: const BorderRadius.all(Radius.circular(15)),
-        ),
-        child: ListTile(
-          onTap: () => _toggleTodo(todo), // 완료/미완료 상태 변경
-          trailing: IconButton(
-            //  오른쪽에 중요버튼(별)
-            icon: todo.isImportant
-                ? const Icon(Icons.star)
-                : const Icon(Icons.star_border_outlined),
-            onPressed: () => _toggleImportant(todo), // 중요 할일 표시
-            color: colorMap['Highlight Color'],
-          ),
-          title: Row(
-            children: [
-              Checkbox(
-                value: todo.isDone,
-                onChanged: (bool? value) => _toggleTodo(todo),
-                checkColor: colorMap['My Check Color'], // 체크 했을 때 체크 표시의 색깔
-                activeColor: colorMap['Highlight Color'], // 체크 했을 때 배경색깔
-                side: BorderSide(
-                    color: colorMap['Highlight Color']!), // 체크박스 border.
-              ),
-              Text(
-                todo.title,
-                style: todo.isDone
-                    ? TextStyle(
-                        // 할 일 완료시
-                        decoration: TextDecoration.lineThrough, // 취소선 긋기
-                        fontStyle: FontStyle.italic, // 이탤릭체
-                        color: colorMap['Text Color'],
-                        fontWeight: FontWeight.bold,
-                      )
-                    : TextStyle(
-                        // 할일 미완료시
-                        color: colorMap['Text Color'],
-                        fontWeight: FontWeight.bold,
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // todolist build하는 메소드
-  Widget _buildTodoList(
+  // 1. (filteringItems 메소드 사용) _items 리스트의 할일들을 필터링 한 후,
+  // 2. (buildItemWidget 위젯 사용) 필터링된 모든 할일들을 출력한다.
+  Widget buildTodoList(
       {bool showCompleted = false,
       bool showImportant = false,
       showAll = false}) {
@@ -273,14 +329,14 @@ class _ToDoListPageState extends State<ToDoListPage> {
                 if (index < filteredItems.length - 1) {
                   return Column(
                     children: [
-                      _buildItemWidget(filteredItems[index]),
+                      buildItemWidget(filteredItems[index]),
                       const SizedBox(height: 20),
                     ],
                   );
                 } else {
                   return Column(
                     children: [
-                      _buildItemWidget(filteredItems[index]),
+                      buildItemWidget(filteredItems[index]),
                     ],
                   );
                 }
@@ -294,6 +350,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
     );
   }
 
+// _items 리스트 필터링하는 메소드.
   List<ToDo> filteringItems(showAll, bool showImportant, bool showCompleted) {
     List<ToDo> filteredItems;
 
@@ -314,6 +371,88 @@ class _ToDoListPageState extends State<ToDoListPage> {
     return filteredItems;
   }
 
+  // Todo 객체를 Slidable(... child: ListTile) 위젯으로 변경하는 메소드
+  Widget buildItemWidget(ToDo todo) {
+    return Slidable(
+      //key: Key(todo.title), // 각 아이템의 고유한 키
+      // 왼쪽에서 오른쪽으로 스와이프
+      startActionPane: ActionPane(
+        motion: const BehindMotion(),
+        extentRatio: 0.25,
+        children: [
+          SlidableAction(
+            onPressed: (context) => modifyTodo(todo),
+            backgroundColor: const Color.fromARGB(255, 65, 138, 233),
+            foregroundColor: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            icon: Icons.edit_document,
+            label: 'MODIFY',
+          ),
+        ],
+      ),
+      // 오른쪽에서 왼쪽으로 스와이프
+      endActionPane: ActionPane(
+        motion: const BehindMotion(),
+        extentRatio: 0.25,
+        children: [
+          SlidableAction(
+            onPressed: (context) => deleteTodo(todo),
+            backgroundColor: const Color(0xFFE94141),
+            foregroundColor: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+            icon: Icons.delete,
+            label: 'DELETE',
+          ),
+        ],
+      ),
+      child: Container(
+        // 할 일 container
+        decoration: BoxDecoration(
+          color: todoContainerColor.color,
+          borderRadius: const BorderRadius.all(Radius.circular(15)),
+        ),
+        child: ListTile(
+          onTap: () => toggleTodo(todo), // 완료/미완료 상태 변경
+          trailing: IconButton(
+            //  오른쪽에 중요버튼(별)
+            icon: todo.isImportant
+                ? const Icon(Icons.star)
+                : const Icon(Icons.star_border_outlined),
+            onPressed: () => toggleImportant(todo), // 중요 할일 표시
+            color: highlightColor.color,
+          ),
+          title: Row(
+            children: [
+              Checkbox(
+                value: todo.isDone,
+                onChanged: (bool? value) => toggleTodo(todo),
+                checkColor: myCheckColor.color, // 체크 했을 때 체크 표시의 색깔
+                activeColor: highlightColor.color, // 체크 했을 때 배경색깔
+                side: BorderSide(color: highlightColor.color), // 체크박스 border.
+              ),
+              Text(
+                todo.title,
+                style: todo.isDone
+                    ? TextStyle(
+                        // 할 일 완료시
+                        decoration: TextDecoration.lineThrough, // 취소선 긋기
+                        fontStyle: FontStyle.italic, // 이탤릭체
+                        color: textColor.color,
+                        fontWeight: FontWeight.bold,
+                      )
+                    : TextStyle(
+                        // 할일 미완료시
+                        color: textColor.color,
+                        fontWeight: FontWeight.bold,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // input 위젯을 만드는 메소드.
   Widget makeInput() {
     return Padding(
@@ -326,25 +465,24 @@ class _ToDoListPageState extends State<ToDoListPage> {
             alignment: Alignment.center,
             width: _inputContainerWidth,
             decoration: BoxDecoration(
-              color:
-                  colorMap['Highlight Color']!.withOpacity(0.2), // input 배경색 설정
+              color: highlightColor.color.withOpacity(0.2), // input 배경색 설정
               borderRadius: BorderRadius.circular(50), // 모서리 둥근 사각형
               border: Border.all(
                 // 테두리 추가
-                color: colorMap['Highlight Color']!,
+                color: highlightColor.color,
                 width: 3,
               ),
             ),
             child: TextField(
               controller: _todoController,
               style: TextStyle(
-                  color: colorMap['Highlight Color']), // 사용자가 입력하는 text 색깔 설정
+                  color: highlightColor.color), // 사용자가 입력하는 text 색깔 설정
               decoration: InputDecoration(
                 border: InputBorder.none, // 입력란의 테두리 제거
                 hintText: 'Add tasks...',
                 hintStyle: TextStyle(
-                    color: colorMap[
-                        'Highlight Color']), // hint text 색 설정. (Add tasks...)
+                    color:
+                        highlightColor.color), // hint text 색 설정. (Add tasks...)
                 contentPadding:
                     const EdgeInsets.only(left: 20), // Add tasks... 왼쪽에 여백 추가
               ),
@@ -355,12 +493,12 @@ class _ToDoListPageState extends State<ToDoListPage> {
             onPressed: () {
               if (_todoController.text.isNotEmpty) {
                 // text를 입력 했을 때만 할일을 추가.
-                _addTodo(ToDo(_todoController.text));
+                addTodo(ToDo(_todoController.text));
               }
             },
             icon: Icon(
               Icons.add_circle_outlined,
-              color: colorMap['Highlight Color'],
+              color: highlightColor.color,
               size: 35,
             ),
           ),
@@ -369,52 +507,7 @@ class _ToDoListPageState extends State<ToDoListPage> {
     );
   }
 
-  // main app build 메소드
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // 다른곳 눌러서 키보드 감추기 가능하게 함.
-        FocusScope.of(context).unfocus();
-      },
-      child: Scaffold(
-        backgroundColor: colorMap['Scaffold Background Color'],
-        appBar: AppBar(
-          centerTitle: true,
-          title: const Text('남은 할 일'),
-          backgroundColor: colorMap['Appbar Color'],
-          actions: [
-            IconButton(
-              onPressed: _showSettings,
-              icon: const Icon(Icons.settings),
-            ),
-          ],
-          bottom: TabBar(
-            indicatorColor: colorMap['Highlight Color'], // tabbar 아래 밑줄 색깔
-            unselectedLabelColor: colorMap['Text Color'], // 선택되지 않은 tab 글자 색깔
-            labelColor: colorMap['Highlight Color'], // 선택된 tab 글자 색깔
-            labelPadding: const EdgeInsets.all(2), // tab text에 padding을 넣음.
-            // 이거 안넣으면 글자가 너무 길어서 일부분이 가려짐.
-            tabs: const [
-              Tab(text: 'All'),
-              Tab(text: 'Completed'),
-              Tab(text: 'Incompleted'),
-              Tab(text: 'Important'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildTodoList(showAll: true), // 모든 할일 보여줌
-            _buildTodoList(showCompleted: true), // 완료된 할일만 보여줌
-            _buildTodoList(showCompleted: false), // 미완료된 할일만 보여줌
-            _buildTodoList(showImportant: true), // 중요한 할일만 보여줌
-          ],
-        ),
-      ),
-    );
-  }
-
+  // 색상 설정창을 띄우는 메소드
   void _showSettings() async {
     showDialog(
       context: context,
@@ -423,12 +516,13 @@ class _ToDoListPageState extends State<ToDoListPage> {
           title: const Text('색상 설정'),
           content: Column(
             children: [
-              _buildColorOption('Appbar Color'),
-              _buildColorOption('Scaffold Background Color'),
-              _buildColorOption('Todo Container Color'),
-              _buildColorOption('Highlight Color'),
-              _buildColorOption('Text Color'),
-              _buildColorOption('My Check Color'),
+              _buildColorOption(appbarColor), // appbar color
+              _buildColorOption(
+                  scaffoldBackgroundColor), // scaffold background color
+              _buildColorOption(todoContainerColor), // todo container color
+              _buildColorOption(highlightColor), // highlight color
+              _buildColorOption(textColor), // text color
+              _buildColorOption(myCheckColor), // my check color
             ],
           ),
           actions: [
@@ -442,26 +536,27 @@ class _ToDoListPageState extends State<ToDoListPage> {
     );
   }
 
-  Widget _buildColorOption(String label) {
+  // 색상 설정창을 띄우는 메소드(실제 list 출력)
+  Widget _buildColorOption(MyColor myColor) {
     return ListTile(
-      title: Text(label),
+      title: Text(myColor.title),
       onTap: () {
-        _showColorPickerDialog(label, colorMap[label]!);
+        _showColorPickerDialog(myColor);
       },
       trailing: Container(
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: colorMap[label],
+          color: myColor.color,
           border: Border.all(color: Colors.black),
         ),
       ),
     );
   }
 
-  void _showColorPickerDialog(String label, Color currentColor) {
-    Color pickerColor = currentColor;
-
+  // 색상 선택하면 color picker dialog 띄우는 메소드
+  void _showColorPickerDialog(MyColor myColor) {
+    Color pickedColor = myColor.color;
     showDialog(
       context: context,
       builder: (context) {
@@ -469,9 +564,10 @@ class _ToDoListPageState extends State<ToDoListPage> {
           title: const Text('색상 선택'),
           content: SingleChildScrollView(
             child: ColorPicker(
-              pickerColor: pickerColor,
+              hexInputBar: true,
+              pickerColor: myColor.color,
               onColorChanged: (newColor) {
-                setState(() => pickerColor = newColor);
+                setState(() => pickedColor = newColor);
               },
             ),
           ),
@@ -480,8 +576,8 @@ class _ToDoListPageState extends State<ToDoListPage> {
               child: const Text('확인'),
               onPressed: () {
                 setState(() {
-                  currentColor = pickerColor;
-                  colorMap[label] = currentColor;
+                  myColor.color = pickedColor;
+                  _saveColor();
                 });
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();

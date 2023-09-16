@@ -70,3 +70,11 @@
    - Appbar, Scaffold, todoContainer, highlight, text, checkbox 체크 색깔을 변경할 수 있음.
    - 아직 색깔 변경한 것을 local에 저장하는 기능은 넣지 않음. 즉 껐다 키면 초기색상으로 돌아감
    - SharedPreferences.getInstance() 사용하면 가능할것으로 보임.
+
+---
+## 5일차 진행상황
+ - 색상 설정 로컬 저장소에 저장
+   - sharedPreferences.getInstance 사용.
+   - 색상 class 새로 만듬.
+   - 코드 분리 시도
+      - 실패. 너무 어려움
